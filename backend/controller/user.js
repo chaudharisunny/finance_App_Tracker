@@ -45,30 +45,43 @@ export const newUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body
+        const { email, password } = req.body;
+
         if (!email || !password) {
-            return res.status(400).json({ error: "All fields are required" })
+            return res.status(400).json({ error: "All fields are required" });
         }
 
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ error: "Invalid email or password" })
+            return res.status(401).json({ error: "Invalid email or password" });
         }
 
-        const isPassword = await user.comparePassword(password)
+        const isPassword = await user.comparePassword(password);
         if (!isPassword) {
-            return res.status(401).json({ error: "Invalid email or password" })
+            return res.status(401).json({ error: "Invalid email or password" });
         }
 
-        const token = createToken(user)
+        // Include _id in token
+       const token=createToken(user)
 
         return res.status(200).json({
-            message: "User login successful",token})
+            message: "User login successful",
+            user: {
+                _id: user._id,          // ✅ use _id
+                username: user.username,
+                email: user.email,
+                image: user.image
+            },
+            token
+        });
+
     } catch (error) {
-        console.error("Login error:", error)
-        res.status(500).json({ error: "Server error" })
+        console.error("Login error:", error);
+        res.status(500).json({ error: "Server error" });
     }
-}
+};
+
+
 
 export const logoutUser=async(req,res)=>{
     res.clearCookie("token");

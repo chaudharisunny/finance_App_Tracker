@@ -1,13 +1,21 @@
 import Transaction from '../models/transaction.js'
 
-export const allTrnasaction=async(req,res)=>{
-    try{
-        const allTransaction=await Transaction.find()
-        res.status(200).json({data:allTransaction})
-    }catch(error){
-        res.status(500).json({error:'server error'})
-    }
-}
+export const allTransaction = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const allTransactions = await Transaction.find({ userId }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "All transactions fetched successfully",
+      data: allTransactions,
+    });
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 
 
 export const newTransaction = async (req, res) => {
@@ -17,6 +25,7 @@ export const newTransaction = async (req, res) => {
     if (!item || !category || !payment ||!transactionType|| !amount || !date) {
       return res.status(400).json({ error: 'All fields are required' });
     }
+     const userId = req.user._id;
     let formattedDate;
     if (typeof date === 'string' && date.includes('/')) {
       const [day, month, year] = date.split('/');
@@ -31,7 +40,8 @@ export const newTransaction = async (req, res) => {
       payment,
       amount,
       transactionType,
-      date: formattedDate
+      date: formattedDate,
+      userId
     });
 
     res.status(201).json({
@@ -58,6 +68,29 @@ export const updateTransaction=async(req,res)=>{
         res.status(500).json({error:"server error"})
     }
 }
+// PUT /update-account-amount
+export const updateAccountAmount = async (req, res) => {
+  try {
+    const { accountName, amount, type } = req.body;
+
+    const account = await Accounts.findOne({ name: accountName });
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    if (type === "income") {
+      account.amount += Number(amount);
+    } else if (type === "expense") {
+      account.amount -= Number(amount);
+    }
+
+    await account.save();
+
+    res.status(200).json({ message: "Account updated successfully", account });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating account amount", err });
+  }
+};
 
   export const deleteTransaction=async(req,res)=>{
     try{
@@ -70,4 +103,25 @@ export const updateTransaction=async(req,res)=>{
     }catch(error){
         res.status(500).json({error:'server error'})
     }
+ }
+
+ export const transactionSummary=async(req,res)=>{
+  try {
+    const transactions=await Transaction.find({userId:req.user._id})
+    const totalIncome = transactions
+      .filter(t => t.transactionType === "income")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalExpense = transactions
+      .filter(t => t.transactionType === "expense")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    res.status(200).json({
+      totalIncome,
+      totalExpense,
+      balance: totalIncome - totalExpense,
+    });
+  } catch (error) {
+    res.status(500).json({error:'server error'})
+  }
  }
